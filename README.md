@@ -1,6 +1,14 @@
 # System Design Cards
 
 ---------
+## Concurrency
+1. Distributed locks
+2. Versioned writes in db
+
+If lock causes issues then partition. When reddit was getting a lot of upvotes for their trending posts then they partitioned their upvote queries. 
+
+
+---------
 
 ## Hot Partitions
 How to handle? For e.g., our hash is on `videoId` then how do we handle hot partitions to calculate view counts for a video? Happens in cases of viral videos!
@@ -33,10 +41,11 @@ How to achieve?
 ------------
 
 ## Testing Scalability
-1. Load Testing: increase tps. Ex. Apache JMeter
-2. Stress Testing: breaking point in the system, which resource will fail first. 
-3. Soak Testing: Generate high load so that memory leaks can be identified.
-4. Netflix Chaos Monkey: Brings down any random host from host pool at a given frequency so that any single breaking point can be identified. 
+
+1. **Load Testing**: increase tps
+2. **Stress Testing**: breaking point in the system.
+3. **Soak Testing**: Generate high load so that memory leaks can be identified.
+4. **Netflix Chaos Monkey**: Brings down any random host from host pool at a given frequency so that any single point of failures can be identified.
 
 
 ------------
@@ -85,3 +94,21 @@ Two generals problem
 1. Quoram
 3. DynamoDB write requests writes to the leader node synchronously and start a worker pool to write to the follower nodes(async wait). As soon as any one follower node writes the data successfully, client is returned successful response.
 
+
+
+------------
+
+## Event Driven Architecture
+
+1. Used in multi-player online gaming algorithms. For example, when we take headshots in Counter Strike then the event is sent with timestamp of the shot and then the backend server matches if the position of player-B was matching with the shot direction for a given timestamp.  
+
+
+#### Trade-Offs:
+1. High availability v/s low consistency
+2. Easy to rollback all events after timestamp T.
+3. Easy to migrate to new service, new service need to consume events. Gateway services like BGCVGS/ABDMSil need to store timestamps.
+4. Transaction Guarantee
+   5. Atleast once: invoice email, should send atleast once
+   6. Atmost once: welcome email, do not care if we do not send it as well.
+5. Queue overfill: Priority Queues for high bandwidth/tps events.
+6. Difficult to move out of.
