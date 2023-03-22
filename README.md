@@ -46,4 +46,28 @@ How to achieve?
 1. TPS
 2. CPU
 3. Errors
-4. 
+
+-------
+
+## How to handle Thundering Herds/Cascading Failures?
+
+*Cascading Failures*: when one server fails, other servers start failing too resulting in a domino effect of failing each server. 
+
+1. **Rate Limiting**: Assign each server a request queue with a pre-determined capacity. Queue Capacity can be determined based on server’s compute power, cpu, etc. 
+2. **Leasing Cache Requests**: Lease get calls to Memcache returns following responses:
+    1. 'FILL': Request will get the latest value from db and fill the cache. 
+    2. 'WAIT/USE_STALE': Any concurrent request read old value from cache or wait for the new value to be filled. 
+    3. Lesser load on the primary database. 
+    4. Instagram/Facebook uses heavily to display mostly stale likes/view counts/etc. 
+3. **Viral** :
+    1. Rate limiting + Auto scaling 
+4. **Black Friday**: 
+    1. Do pre-scale based on load factor. 
+    2. Also attach auto scaling. 
+5. **Job Scheduling**:
+    1. Always In batches if possible + sleep in between request calls. 
+6. **Popular Post**:
+    1. Twitter do not pre-populate celebrity posts in user’s feed cache. Get calls for Posts from celebrities I follow are made at runtime when I open my app and those cards are merged in my cache at some pre-calculated positions.
+    2. If you must send notifications, then add jitter, YouTube uses jitter to send notifications to followers of bell icon for popular pages
+7. **Approximation**: Approximations are used for displaying like/view counts since those are metadata and not core feature of the product. 
+8. If scale is very high, invest in hardware 
