@@ -70,4 +70,16 @@ How to achieve?
     1. Twitter do not pre-populate celebrity posts in user’s feed cache. Get calls for Posts from celebrities I follow are made at runtime when I open my app and those cards are merged in my cache at some pre-calculated positions.
     2. If you must send notifications, then add jitter, YouTube uses jitter to send notifications to followers of bell icon for popular pages
 7. **Approximation**: Approximations are used for displaying like/view counts since those are metadata and not core feature of the product. 
-8. If scale is very high, invest in hardware 
+8. If scale is very high, invest in hardware. 
+
+
+-----
+
+## Consistency 
+
+Two generals problem
+
+1. Leader-Follower roles. 
+2. 2-Phase Commit. 
+3. DynamoDB write requests writes to the leader node synchronously and start a worker pool to write to the follower nodes(async wait). As soon as any one follower node writes the data successfully, client is returned successful response.
+
