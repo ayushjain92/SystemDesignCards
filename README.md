@@ -33,8 +33,8 @@ How to achieve?
 ------------
 
 ## Testing Scalability
-1. Load Testing: increase tps
-2. Stress Testing: breaking point in the system.
+1. Load Testing: increase tps. Ex. Apache JMeter
+2. Stress Testing: breaking point in the system, which resource will fail first. 
 3. Soak Testing: Generate high load so that memory leaks can be identified.
 4. Netflix Chaos Monkey: Brings down any random host from host pool at a given frequency so that any single breaking point can be identified. 
 
