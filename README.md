@@ -43,9 +43,10 @@ How to achieve?
 
 ## Monitoring
 
-1. TPS
-2. CPU
-3. Errors
+1. Latency
+2. Error
+3. Traffic
+4. Saturation 
 
 -------
 
