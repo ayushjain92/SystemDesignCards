@@ -56,8 +56,8 @@ How to achieve?
 
 1. **Rate Limiting**: Assign each server a request queue with a pre-determined capacity. Queue Capacity can be determined based on server’s compute power, cpu, etc. 
 2. **Leasing Cache Requests**: Lease get calls to Memcache returns following responses:
-    1. 'FILL': Request will get the latest value from db and fill the cache. 
-    2. 'WAIT/USE_STALE': Any concurrent request read old value from cache or wait for the new value to be filled. 
+    1. `FILL`: Request will get the latest value from db and fill the cache. 
+    2. `WAIT/USE_STALE`: Any concurrent request read old value from cache or wait for the new value to be filled. 
     3. Lesser load on the primary database. 
     4. Instagram/Facebook uses heavily to display mostly stale likes/view counts/etc. 
 3. **Viral** :
