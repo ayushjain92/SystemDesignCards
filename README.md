@@ -82,5 +82,6 @@ Two generals problem
 
 1. Leader-Follower roles. 
 2. 2-Phase Commit. 
+1. Quoram
 3. DynamoDB write requests writes to the leader node synchronously and start a worker pool to write to the follower nodes(async wait). As soon as any one follower node writes the data successfully, client is returned successful response.
 
