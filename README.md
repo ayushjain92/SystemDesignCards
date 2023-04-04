@@ -193,4 +193,4 @@ Two generals problem
 ### URL in browser
 
 
-![img1](Untitled Diagram.drawio.svg)
+![img1](https://github.com/ayushjain92/SystemDesignCards/blob/main/Untitled%20Diagram.drawio.svg)
