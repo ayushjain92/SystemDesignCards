@@ -189,21 +189,3 @@ Two generals problem
 
 
 ---------
-
-### URL in browser
-
-
-![img1](https://github.com/ayushjain92/SystemDesignCards/blob/main/Untitled%20Diagram.drawio.svg)
-
-----------
-
-
-### Uber Design
-
-![Uber](diagrams/uber.png)
-
-
-
-### WhatsApp Design
-
-![Uber](diagrams/whatsapp.png)
