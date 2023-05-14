@@ -42,7 +42,7 @@ How to handle? For e.g., our hash is on `videoId` then how do we handle hot part
 
 #### Solution:
 1. **Re-Hash**: Include timestamp in the key so that all instances of video will be evenly distributed among the partitions.
-2. **Split Partition**: Split a hot partition into multiple partitions using consistent hashing. 2-layer cluster where a single cluster re-directs to another cluster.
+2. **Split Partition**: Split a hot partition into multiple partitions using consistent hashing. 2-layer cluster where a single *Proxy cluster* re-directs to actual cluster.
 1. `[BONUS]` **Dedicated Partition**: Create a dedicated partition to handle workloads from popular channels like Mr. Beast, PewDieDie, T-Series, etc.?
 
 --------
@@ -141,9 +141,9 @@ Two generals problem
 2. Easy to rollback all events after timestamp T.
 3. Easy to migrate to new service, new service need to consume events. Gateway services like BGCVGS/ABDMSil need to store timestamps.
 4. Transaction Guarantee
-   5. Atleast once: invoice email, should send atleast once
-   6. Atmost once: welcome email, do not care if we do not send it as well.
-5. Queue overfill: Priority Queues for high bandwidth/tps events.
+   1. Atleast once: invoice email, should send atleast once
+   2. Atmost once: welcome email, do not care if we do not send it as well.
+5. Queue overfill: Priority Queues for high bandwidth/tps events. P-0 Queue to handle Sev1/Sev2, P-1 Queue to handle workloads from production code, P-2 Queue to handle workloads from Customer Support/Production testing.
 6. Difficult to move out of.
 
 
