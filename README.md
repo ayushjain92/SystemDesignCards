@@ -9,6 +9,31 @@
 
 If lock causes issues then partition. When reddit was getting a lot of upvotes for their trending posts then they partitioned their upvote queries. 
 
+### Concurrency based on cores
+
+| Core        | How to play Concurrency | Examples                                                                                                     | 
+|-------------|-------------------------|--------------------------------------------------------------------------------------------------------------|
+| Single Core | Context Switching       | ![Context Switch](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*_HglrgsHLrFrSxaFfGw8fA.png) ![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*E3lhTuU_P3bePvL6Nfwf_A.jpeg) |
+| Multi-Core  | Parallelism             | ![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*QbyO_eNcYHw8cUpvVR5AZw.jpeg)                                                                                                        |                                                                                       
+
+### LLD
+
+#### ConcurrentHashMap
+![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*U3oE8gg95rTulEJQGG10GQ.png)
+```java
+
+/**
+new ConcurrentHashMap(int initialCapacity, float loadFactor, int concurrencyLevel);
+ Initial capacity of map is 100 which means ConcurrentHashMap will make sure it has space for adding 100 key-value pairs after creation.
+
+ LoadFactor is 0.75f which means when average number of elements per map exceeds 75 (initial capacity * load factor = 100 * 0.75 = 75) at that time map size will be increased and existing items in map are rehashed to put in new larger size map.
+
+ Concurrency level is 10, it means at any given point of time Segment array size will be 10 or greater than 10, so that 10 threads can able to write to a map in parallel.
+ **/
+ConcurrentHashMap map = new ConcurrentHashMap(100, 0.75f, 10);
+
+
+```
 
 ---------
 
@@ -29,7 +54,6 @@ How to achieve?
 1. **Single-leader replication**: Each partition with a single leader.
 2. **Leaderless replication**: Each host talk to each other using gossip protocol.
 3. **Multi-leader replication**: Used for replicating data among different DCs. Each DC will have it's own leader node.
-4. **Replication Factor**: how many nodes should have data copies.
 1. `[BONUS]` **Redundancy**: Fast Reads. In the consistent hashing ring, every node should have a copy of data from it's previous node. This helps in achieving low latency when a node fails and the node in front of it start serving its request.
 
 
@@ -109,7 +133,7 @@ Two generals problem
 
 ## Event Driven Architecture
 
-1. Used in multi-player online gaming algorithms. For example, when we take headshots in Counter Strike then the event is sent with timestamp of the shot and then the backend server matches if the position of player-B was matching with the shot direction for a given timestamp.  
+1. Used in multi-player online gaming algorithms. For example, when we take headshots in Counter Strike then the event is sent with timestamp of the shot and then the backend server matches if the position of player-B was matching with the shot direction/location for a given timestamp.  
 
 
 #### Trade-Offs:
@@ -189,3 +213,8 @@ Two generals problem
 
 
 ---------
+
+
+### Why do we need a persistent TCP connection in cases of live streams/chat applications etc.?
+
+To send traffic to clients, the server and client must establish a persistent TCP connection. The need for a persistent connection is because the stream must continue to come in, and creating new connections each time would take more time and make the video not remain live. To maintain a persistent connection, there are various technologies available, such as **Web Sockets**.
