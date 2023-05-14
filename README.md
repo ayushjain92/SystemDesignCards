@@ -1,25 +1,25 @@
 # System Design Cards
 
 ---------
-## Concurrency
+## Concurrency 
 
 1. [ConcurrentHashMap](https://itsromiljain.medium.com/curious-case-of-concurrenthashmap-90249632d335)
-2. Distributed locks
-2. Versioned writes in db
+2. Distributed Locks
+2. Versioned Writes in db
 
 If lock causes issues then partition. When reddit was getting a lot of upvotes for their trending posts then they partitioned their upvote queries. 
 
 ### Concurrency based on cores
 
-| Core        | How to play Concurrency | Examples                                                                                                     | 
-|-------------|-------------------------|--------------------------------------------------------------------------------------------------------------|
-| Single Core | Context Switching       | ![Context Switch](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*_HglrgsHLrFrSxaFfGw8fA.png) ![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*E3lhTuU_P3bePvL6Nfwf_A.jpeg) |
-| Multi-Core  | Parallelism             | ![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*QbyO_eNcYHw8cUpvVR5AZw.jpeg)                                                                                                        |                                                                                       
+| Core        | How Concurrency Works? | Examples                                                                                                                                                                                         | 
+|-------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Single Core | Context Switching      | ![Context Switch](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*_HglrgsHLrFrSxaFfGw8fA.png) ![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*E3lhTuU_P3bePvL6Nfwf_A.jpeg) |
+| Multi-Core  | Parallelism            | ![Parallelism](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*QbyO_eNcYHw8cUpvVR5AZw.jpeg)                                                                                             |                                                                                       
 
 ### LLD
 
 #### ConcurrentHashMap
-![](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*U3oE8gg95rTulEJQGG10GQ.png)
+![ConcurrentHashMap](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*U3oE8gg95rTulEJQGG10GQ.png)
 ```java
 
 /**
@@ -31,9 +31,108 @@ new ConcurrentHashMap(int initialCapacity, float loadFactor, int concurrencyLeve
  Concurrency level is 10, it means at any given point of time Segment array size will be 10 or greater than 10, so that 10 threads can able to write to a map in parallel.
  **/
 ConcurrentHashMap map = new ConcurrentHashMap(100, 0.75f, 10);
-
-
 ```
+
+
+#### CompletableFuture
+```java
+
+CompletableFuture.supplyAsync(() -> getUser(userId))
+        .thenApply(CreditRatingService::getCreditRatingSystem1)
+        .thenAccept(System.out::println);
+
+CompletableFuture.supplyAsync(() -> getUser(userId))
+        .thenApplyAsync(CreditRatingService::getCreditRatingSystem1)
+        .thenAcceptAsync(System.out::println);
+```
+
+1. The difference is in the `async` suffix on the method names. The methods without async execute their task in the same thread as the previous task. So in the first example, all getUser, getCreditRating and println are executed in the same thread. It’s OK, it’s still a thread from the fork-join pool, so the main thread is not blocked.
+2. The second variant always submits the succeeding task to the pool, so each of the tasks can be handled by different thread. The result will be the same, the first variant is a bit more effective due to less thread switching overhead. It does not make any sense to use the async variant here
+
+`applyAsync` variant is used for the below use-cases:
+
+```java
+CompletableFuture<User> user = CompletableFuture.supplyAsync(() -> getUser(userId));
+
+CompletableFuture<CreditRating> rating1 = 
+    user.thenApplyAsync(CreditRatingService::getCreditRatingSystem1);
+CompletableFuture<CreditRating> rating2 = 
+    user.thenApplyAsync(CreditRatingService::getCreditRatingSystem2);
+
+rating1
+    .thenCombineAsync(rating2, CreditRating::combine)
+    .thenAccept(System.out::println);
+```
+
+1. Since we want to do it in parallel, we have to use at least one async method. Without async, the code would use only one thread so both credit rating tasks would be executed serially.
+2. We have added combine phase that waits for both credit rating tasks to complete. It’s better to make this async too, but from different reason. Without async, the same thread as in rating1 would be used. But we do not want to block the thread while waiting for the rating2 task. You want to return it to the pool and get a thread only when it is needed.
+3. When both tasks are ready, we can combine the result and print it in the same thread, so the last thenAccept is without async.
+
+```java
+CompletableFuture.supplyAsync(() -> {
+    try {
+        // divide by 0;
+    } catch (Exception e) {
+        throw new RuntimeException("err", e);
+    }}).thenAcceptAsync().exceptionally(e -> {
+            System.err.println("Error! " + e.getMessage());
+            return null;
+});
+```
+
+##### CompletableFuture v/s ExecutorService
+*ExecutorService:*
+```java
+public ReturnSomething parent(){
+    child();
+    ...//rest to UI
+}
+
+private void child() {
+  ExecutorService executorService = Executors.newFixedThreadPool(3);
+  
+  executorService.submit( () -> { 
+      MyFileService.service1();
+  });
+  executorService.submit(() -> {
+        MyFileService.service2();
+  });
+  executorService.submit(() -> {
+        MyFileService.service3();
+  });
+}
+```
+*CompletableFuture:*
+```java
+public ReturnSomething parent() {
+    child();
+    ...//rest to UI
+}
+
+private void child() {
+    CompletableFuture.supplyAsync(() ->  MyFileService.service1();
+    CompletableFuture.supplyAsync(() ->  MyFileService.service2();
+    CompletableFuture.supplyAsync(() ->  MyFileService.service3();
+}
+```
+
+Functionally, the above 2 approaches are more or less the same:you submit your tasks for execution; you don't wait for the result.
+
+Technically, however, there are some subtle differences:
+1. In the second approach, you didn't specify an executor, so it will use the **common ForkJoinPool**. You would have to pass an executor as second argument of supplyAsync() if you don't want that;
+1. The CompletableFuture API allows to easily chain more calls with thenApply(), thenCompose() etc. It is thus more flexible than the simple Future returned by ExecutorService.submit();
+1. Using CompletableFuture allows to easily return a future from your child() method using return CompletableFuture.allOf(the previously created futures).
+
+###### Better Hybrid Approach:
+```java
+CompletableFuture.supplyAsync(MyFileService::service1, executorService);
+CompletableFuture.supplyAsync(MyFileService::service2, executorService);
+CompletableFuture.supplyAsync(MyFileService::service3, executorService);
+```
+We should never use common ForkJoinPool for blocking I/O calls like calling a micro-service/database calls etc. In general, there are two types of tasks: computational and blocking. If you have more than three available CPUs, then your commonPool is automatically sized to two threads and you can very easily block execution of any other part of your system that uses the commonPool at the same time by keeping the threads in a blocked state.
+
+### References
+[1](https://blog.krecan.net/2013/12/25/completablefutures-why-to-use-async-methods/), [2](https://codeflex.co/java-multithreading-completablefuture-explained/), [3](https://stackoverflow.com/questions/27723546/completablefuture-supplyasync-and-thenapply), [4](https://stackoverflow.com/questions/52303472/executorservice-vs-completablefuture)
 
 ---------
 
