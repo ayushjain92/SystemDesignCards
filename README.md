@@ -5,7 +5,7 @@
 
 1. [ConcurrentHashMap](https://itsromiljain.medium.com/curious-case-of-concurrenthashmap-90249632d335)
 2. Distributed Locks
-2. Versioned Writes in db
+2. Versioned/Conditional Writes in db
 
 If lock causes issues then partition. When reddit was getting a lot of upvotes for their trending posts then they partitioned their upvote queries. 
 
@@ -364,4 +364,36 @@ tbd.
 
 ### HDFS (Hadoop Distributed File System)
 
-HDFS is designed to reliably store very large files across machines in a large cluster. It stores each file as a sequence of blocks; all blocks in a file except the last block are the same size. The blocks of a file are replicated for fault tolerance (HDFS requires Block Storage). 
+HDFS is designed to reliably store very large files across machines in a large cluster. It stores each file as a sequence of blocks; all blocks in a file except the last block are the same size. The blocks of a file are replicated for fault tolerance (HDFS requires Block Storage).
+
+
+-----------
+
+
+## How to scale databases?
+
+1. **Cache Database Queries:** Use appropriate caching strategies. Trade-offs:
+   1. High cost for managing cache servers.
+   2. More code maintenance (testing caches, upgrading caches, increasing decreasing cache size, etc.)
+   3. More latency in cases of cache misses.
+   4. More layer of monitoring needed on caches now. Introducing one more point of failure.
+2. **Database Indexes:** Choose/Create indexes (primary+secondary) appropriately. Trade-Offs:
+   1. High cost, entire data in each index gets replicated with new key. Creating too many indexes increases cost and write performances as well. 
+   2. Consistency: Secondary indexes will be eventually consistent.
+3. **Database Read Replication:** Create more read replicas for databases with huge read traffic. Trade-Offs:
+   1. More servers more cost.
+   2. If read replicas need to be synced consistently then more latencies in write otherwise there is a chance of reading stale data in cases of eventual consistency. We can implement quoram reads to avoid stale data issue but that will increase read latencies.
+4. **Database Sharding:**
+   1. Horizontal Sharding: ![horizontal-sharding](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*sm51Y09jiW9d0G8C-sFlJg.png)
+   1. Verical Sharding: ![vertical-sharding](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*h_QdzTcQ78nTQJ-R6uEjXA.png)
+   2. Having a sharded database architecture provides some pretty massive benefits, however, it is complex and has a high implementation and maintenance cost. This is definitely an option you’d want to consider after exhausting other scaling solutions as the ramifications of ineffective implementation can be quite severe.
+
+
+
+Implementing scaling solutions introduces the following complexities:
+1. Adding new features takes longer.
+1. The system becomes more complex with more pieces and variables involved.
+1. Code can be more difficult to test.
+1. Finding and resolving bugs becomes harder.
+![database-scaling](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*E72uBT_C4sTjqWnjwIC1hQ.jpeg)
+
