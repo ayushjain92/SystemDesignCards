@@ -397,3 +397,87 @@ Implementing scaling solutions introduces the following complexities:
 1. Finding and resolving bugs becomes harder.
 ![database-scaling](https://miro.medium.com/v2/resize:fit:1400/format:webp/1*E72uBT_C4sTjqWnjwIC1hQ.jpeg)
 
+-----------------
+
+
+## Resiliency
+
+### Downstream resiliency
+#### Timeout
+When a network call is made, it’s best practice to configure a timeout to fail the call if no response is received within a certain amount of time. If the call is made without a timeout, there is a chance it will never return. Network calls that don’t return lead to resource leaks.
+
+*How to configure timeouts?*
+1. One way is to base it on the desired false timeout rate. For example, suppose we have a service calling another, and we are willing to accept that 0.1% of downstream requests that would have eventually returned a response time out (i.e., 0.1% false timeout rate). To accomplish that, we can configure the timeout based on the 99.9th percentile of the downstream service’s response time.
+
+
+#### Retry: exponential backoff, retry amplification
+
+```java
+
+/**
+For example, if the cap is set to 8 seconds, and the backoffCoeffiecient is 2 seconds, then the first retry delay is 2 seconds, the second is 4 seconds, the third is 8 seconds, and any further delay will be capped to 8 seconds.
+ **/
+delay = min(cap, backoffCoefficient * 2^attempt);
+
+```
+Although exponential backoff does reduce the pressure on the downstream dependency, it still has a problem. When the downstream service is temporarily degraded, multiple clients will likely see their requests failing around the same time. This will cause clients to retry simultaneously, hitting the downstream service with load spikes that further degrade it. To avoid this herding behavior, we can introduce random jitter into the delay calculation. This spreads retries out over time, smoothing out the load to the downstream service:
+
+```java
+//jitter
+delay = random(0, min(cap, backoffCoefficient * 2^attempt));
+```
+
+**Async processes should not be retried always.** We can use a DLQ to retry async processes.
+
+Having retries at multiple levels of the dependency chain can amplify the total number of retries — the deeper a service is in the chain, the higher the load it will be exposed to due to **retry amplification.**
+![retry amplification](https://blog.pragmaticengineer.com/content/images/2022/09/dist_05.png)
+And if the pressure gets bad enough, this behavior can easily overload downstream services. That’s why, when we have long dependency chains, we should consider retrying at a single level of the chain and failing fast in all the others.
+
+
+#### Circuit breaker
+
+The goal of the circuit breaker is to allow a sub-system to fail without slowing down the caller. To protect the system, calls to the failing sub-system are temporarily blocked. Later, when the sub-system recovers and failures stop, the circuit breaker allows calls to go through again.
+
+Unlike retries, circuit breakers prevent network calls entirely, making the pattern particularly useful for non-transient faults. In other words, retries are helpful when the expectation is that the next call will succeed, while circuit breakers are helpful when the expectation is that the next call will fail.
+**Example:** Amazon’s front page; if the recommendation service is unavailable, the page renders without recommendations. It’s a better outcome than failing to render the whole page entirely.
+
+![Circuit Breaker](https://blog.pragmaticengineer.com/content/images/2022/09/dist_06.png)
+
+How many failures are “enough to consider a downstream dependency down? How long should the circuit breaker wait to transition from the open to the half-open state? It really depends on the specific context; only by using data about past failures can we make an informed decision.
+
+### Upstream resiliency
+#### Load shedding
+When the server detects that it’s overloaded, it can reject incoming requests by failing fast and returning a response with status code 503 (Service Unavailable). This technique is also referred to as load shedding.
+
+*Load Sheding Algorithms:*
+1. The server doesn’t necessarily have to reject arbitrary requests; for example, if different requests have different priorities, the server could reject only low-priority ones. 
+2. Alternatively, the server could reject the oldest requests first since those will be the first ones to time out and be retried, so handling them might be a waste of time.
+
+
+*Trade-Offs:*
+1. Unfortunately, rejecting a request doesn’t completely shield the server from the cost of handling it. Depending on how the rejection is implemented, the server might still have to pay the price of opening a TLS connection and reading the request just to reject it. Hence, load shedding can only help so much, and if load keeps increasing, the cost of rejecting requests will eventually take over and degrade the server.
+
+
+
+#### Load leveling
+There is an alternative to load shedding, which can be exploited when clients don’t expect a prompt response. The idea is to introduce a messaging channel between the clients and the service. The channel decouples the load directed to the service from its capacity, allowing it to process requests at its own pace.
+
+![Load leveling](https://blog.pragmaticengineer.com/content/images/2022/09/dist_07.png)
+
+*Examples:* Submitting offers by Sellers.
+
+*Trade-offs:*
+1. It’s well suited to fending off short-lived spikes, which the channel smooths out. But if the service doesn’t catch up eventually, a large backlog will build up, which comes with its own problems.
+
+
+
+### Rate limiting
+1. Rate-limiting, or throttling, is a mechanism that rejects a request when a specific quota is exceeded. A service can have multiple quotas, e.g., for the number of requests or bytes received within a time interval. Quotas are typically applied to specific users, API keys, or IP addresses.
+2. Rate-limiting is also used to enforce pricing tiers; if users want to use more resources, they should also be willing to pay more. This is how you can offload your service’s cost to your users: have them pay proportionally to their usage and enforce pricing tiers with quotas.
+
+Although rate-limiting has some similarities with load shedding, they are different concepts. Load shedding rejects traffic based on the local state of a process, like the number of requests concurrently processed by it; rate-limiting instead sheds traffic based on the global state of the system, like the total number of requests concurrently processed for a specific API key across all service instances. And because there is a global state involved, some form of coordination is required.
+
+### References
+https://blog.pragmaticengineer.com/resiliency-in-distributed-systems/
+
+
